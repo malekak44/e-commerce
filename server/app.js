@@ -6,6 +6,7 @@ const connectDB = require('./db/connect');
 const cookieParser = require('cookie-parser');
 const authRouter = require('./routes/auth');
 const productRouter = require('./routes/product');
+const orderRouter = require('./routes/order');
 const notFound = require('./middleware/not-found');
 const errorHandler = require('./middleware/error-handler');
 
@@ -15,6 +16,7 @@ app.use(express.static('./public'));
 app.use(cookieParser(process.env.JWT_SECRET));
 app.use('/api/auth', authRouter);
 app.use('/api/products', productRouter);
+app.use('/api/orders', orderRouter);
 app.use(notFound);
 app.use(errorHandler);
 

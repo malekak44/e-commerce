@@ -6,7 +6,7 @@ const { StatusCodes } = require('http-status-codes');
 
 const fakeStripeAPI = async ({ amount, currency }) => {
     const client_secret = 'someRandomValue';
-    return { client_secret, amount };
+    return { client_secret, amount, currency };
 }
 
 const createOrder = async (req, res) => {
@@ -30,12 +30,12 @@ const createOrder = async (req, res) => {
             throw new Errors.NotFoundError(`No product with id : ${item.product}`);
         }
 
-        const { name, price, image, _id } = dbProduct;
+        const { name, image, price, _id } = dbProduct;
         const singleOrderItem = {
-            amount: item.amount,
             name,
-            price,
             image,
+            price,
+            amount: item.amount,
             product: _id,
         }
 
@@ -45,7 +45,7 @@ const createOrder = async (req, res) => {
         subtotal += item.amount * price;
     }
 
-    // calculate total 
+    // calculate total
     const total = tax + shippingFee + subtotal;
     // get client secret
     const paymentIntent = await fakeStripeAPI({
@@ -54,39 +54,16 @@ const createOrder = async (req, res) => {
     });
 
     const order = await Order.create({
-        orderItems,
-        total,
-        subtotal,
         tax,
         shippingFee,
-        clientSecret: paymentIntent.client_secret,
+        subtotal,
+        total,
+        orderItems,
         user: req.user.userId,
+        clientSecret: paymentIntent.client_secret,
     });
 
     res.status(StatusCodes.CREATED).json({ order, clientSecret: order.clientSecret });
-}
-
-const getAllOrders = async (req, res) => {
-    const orders = await Order.find({});
-    res.status(StatusCodes.OK).json({ orders, count: orders.length });
-}
-
-const getSingleOrder = async (req, res) => {
-    const { id: orderId } = req.params;
-    const order = await Order.findOne({ _id: orderId });
-
-    if (!order) {
-        throw new Errors.NotFoundError(`No order with id : ${orderId}`);
-    }
-
-    checkPermissions(req.user, order.user);
-    res.status(StatusCodes.OK).json({ order });
-}
-
-const getCurrentUserOrders = async (req, res) => {
-    const orders = await Order.find({ user: req.user.userId });
-
-    res.status(StatusCodes.OK).json({ orders, count: orders.length });
 }
 
 const updateOrder = async (req, res) => {
@@ -108,10 +85,32 @@ const updateOrder = async (req, res) => {
     res.status(StatusCodes.OK).json({ order });
 }
 
+const getAllOrders = async (req, res) => {
+    const orders = await Order.find({});
+    res.status(StatusCodes.OK).json({ orders, count: orders.length });
+}
+
+const getSingleOrder = async (req, res) => {
+    const { id: orderId } = req.params;
+    const order = await Order.findOne({ _id: orderId });
+
+    if (!order) {
+        throw new Errors.NotFoundError(`No order with id : ${orderId}`);
+    }
+
+    checkPermissions(req.user, order.user);
+    res.status(StatusCodes.OK).json({ order });
+}
+
+const getCurrentUserOrders = async (req, res) => {
+    const orders = await Order.find({ user: req.user.userId });
+    res.status(StatusCodes.OK).json({ orders, count: orders.length });
+}
+
 module.exports = {
     createOrder,
+    updateOrder,
     getAllOrders,
     getSingleOrder,
     getCurrentUserOrders,
-    updateOrder,
 }
