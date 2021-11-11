@@ -1,6 +1,6 @@
+const Errors = require('../errors');
 const User = require('../models/User');
 const { StatusCodes } = require('http-status-codes');
-const Errors = require('../errors');
 const {
     createTokenUser,
     checkPermissions,
@@ -8,48 +8,54 @@ const {
 } = require('../utils');
 
 const getAllUsers = async (req, res) => {
-    console.log(req.user);
     const users = await User.find({ role: 'user' }).select('-password');
-    res.status(StatusCodes.OK).json({ users });
+    res.status(StatusCodes.OK).json({ users, count: users.length });
 }
 
 const getSingleUser = async (req, res) => {
-    const user = await User.findOne({ _id: req.params.id }).select('-password');
+    const { id: userId } = req.params;
 
+    const user = await User.findOne({ _id: userId }).select('-password');
     if (!user) {
-        throw new Errors.NotFoundError(`No user with id : ${req.params.id}`);
+        throw new Errors.NotFoundError(`No user with id : ${userId}`);
     }
 
     checkPermissions(req.user, user._id);
     res.status(StatusCodes.OK).json({ user });
 }
 
-const showCurrentUser = (req, res) => {
-    res.status(StatusCodes.OK).json({ user: req.user });
-}
+const showCurrentUser = async (req, res) => {
+    const userId = req.user.userId;
 
-const updateUser = (req, res) => {
-    const { name, email } = req.body;
-    if (!name || !email) {
-        throw new Errors.BadRequestError('Please provide all values');
+    const user = await User.findOne({ _id: userId }).select('-password');
+    if (!user) {
+        throw new Errors.NotFoundError(`No user with id : ${userId}`);
     }
 
-    const user = await User.findOne({ _id: req.user.userId });
+    res.status(StatusCodes.OK).json({ user });
+}
+
+const updateUser = async (req, res) => {
+    const { name, email } = req.body;
+    if (!name || !email) {
+        throw new Errors.BadRequestError('Please provide name and email');
+    }
+
+    const user = await User.findOne({ _id: req.user.userId }).select('-password');
     user.name = name;
     user.email = email;
-
     await user.save();
 
     const tokenUser = createTokenUser(user);
     attachCookiesToResponse({ res, user: tokenUser });
 
-    res.status(StatusCodes.OK).json({ user: tokenUser });
+    res.status(StatusCodes.OK).json({ user });
 }
 
 const updateUserPassword = async (req, res) => {
     const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword) {
-        throw new Errors.BadRequestError('Please provide both values');
+        throw new Errors.BadRequestError('Please provide old and new password');
     }
 
     const user = await User.findOne({ _id: req.user.userId });
@@ -60,15 +66,15 @@ const updateUserPassword = async (req, res) => {
     }
 
     user.password = newPassword;
-
     await user.save();
+
     res.status(StatusCodes.OK).json({ msg: 'Success! Password Updated.' });
 }
 
 module.exports = {
+    updateUser,
     getAllUsers,
     getSingleUser,
     showCurrentUser,
-    updateUser,
     updateUserPassword,
 }

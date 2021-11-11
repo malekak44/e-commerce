@@ -8,6 +8,7 @@ const authRouter = require('./routes/auth');
 const productRouter = require('./routes/product');
 const orderRouter = require('./routes/order');
 const reviewRouter = require('./routes/review');
+const userRouter = require('./routes/user');
 const notFound = require('./middleware/not-found');
 const errorHandler = require('./middleware/error-handler');
 
@@ -19,6 +20,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/products', productRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/reviews', reviewRouter);
+app.use('/api/users', userRouter);
 app.use(notFound);
 app.use(errorHandler);
 
